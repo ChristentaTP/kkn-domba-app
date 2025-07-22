@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Dashboard from '../screens/Dashboard';
 import Input from '../screens/Input';
 import History from '../screens/History';
+import Monitor from '../screens/Monitor';
 
 const Tab = createBottomTabNavigator();
 
@@ -55,6 +56,15 @@ export default function BottomTabs() {
             <MaterialCommunityIcons name="history" color={color} size={size} />
           ),
         }}
+      />
+      <Tab.Screen
+      name='Monitor'
+      component={Monitor}
+      options={{
+        tabBarIcon: ({color,size}) => (
+          <MaterialCommunityIcons name='gauge' color={color} size={size}/>
+        ),
+      }}
       />
     </Tab.Navigator>
   );
