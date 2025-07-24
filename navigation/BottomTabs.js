@@ -2,7 +2,6 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Dashboard from '../screens/Dashboard';
-import Input from '../screens/Input';
 import History from '../screens/History';
 import Monitor from '../screens/Monitor';
 
@@ -19,8 +18,8 @@ export default function BottomTabs() {
           borderTopColor: '#ccc',
           height: 60,
         },
-        tabBarActiveTintColor: '#1E293B', // teks aktif
-        tabBarInactiveTintColor: '#777',  // teks non-aktif
+        tabBarActiveTintColor: '#1E293B',
+        tabBarInactiveTintColor: '#777',
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
@@ -38,12 +37,12 @@ export default function BottomTabs() {
         }}
       />
       <Tab.Screen
-        name="Input"
-        component={Input}
+        name="Monitor"
+        component={Monitor}
         options={{
-          tabBarLabel: 'Input',
+          tabBarLabel: 'Monitor',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="plus-box" color={color} size={size} />
+            <MaterialCommunityIcons name="gauge" color={color} size={size} />
           ),
         }}
       />
@@ -56,15 +55,6 @@ export default function BottomTabs() {
             <MaterialCommunityIcons name="history" color={color} size={size} />
           ),
         }}
-      />
-      <Tab.Screen
-      name='Monitor'
-      component={Monitor}
-      options={{
-        tabBarIcon: ({color,size}) => (
-          <MaterialCommunityIcons name='gauge' color={color} size={size}/>
-        ),
-      }}
       />
     </Tab.Navigator>
   );
