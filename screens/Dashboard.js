@@ -1,159 +1,179 @@
 // screens/Dashboard.js
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
+  ActivityIndicator,
   StyleSheet,
   Dimensions,
-} from 'react-native';
-import { LineChart, BarChart } from 'react-native-chart-kit';
-import { useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
+import { BarChart } from "react-native-chart-kit";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { getWeightsSorted } from '../services/sheepData';
-
-const screenW = Dimensions.get('window').width;
-const SHEEP  = ['Domba A', 'Domba B', 'Domba C', 'Domba D'];
-const COLORS = ['#e91e63', '#2196f3', '#4caf50', '#ff9800'];
+const screenWidth = Dimensions.get("window").width;
 
 export default function Dashboard() {
-  const [labels, setLabels] = useState([]);
-  const [series, setSeries] = useState([[], [], [], []]);
-  const [avg,    setAvg]    = useState([0, 0, 0, 0]);
-  const [insight,setInsight]= useState('');
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [weightDist, setWeightDist] = useState({
+    "30-40": 0,
+    "41-50": 0,
+    "51-60": 0,
+    ">60": 0,
+  });
+  const [avgAmmonia, setAvgAmmonia] = useState(0);
 
-  useFocusEffect(
-    useCallback(() => {
-      const load = async () => {
-        const raw = await getWeightsSorted();
+  useEffect(() => {
+    const q = query(collection(db, "data_domba"), orderBy("timestamp", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let tempData = [];
+      let dist = { "30-40": 0, "41-50": 0, "51-60": 0, ">60": 0 };
+      let ammoniaSum = 0;
 
-        const data = raw.filter(
-          d => !isNaN(Number(d.weight)) && isFinite(d.weight) && d.weight > 0
-        );
+      snapshot.forEach((doc) => {
+        const item = doc.data();
+        tempData.push(item);
 
-        const dates = [...new Set(data.map(d => d.date))];
+        if (item.weight >= 30 && item.weight <= 40) dist["30-40"]++;
+        else if (item.weight >= 41 && item.weight <= 50) dist["41-50"]++;
+        else if (item.weight >= 51 && item.weight <= 60) dist["51-60"]++;
+        else if (item.weight > 60) dist[">60"]++;
 
-        const allSeries = SHEEP.map(name =>
-          dates.map(d => {
-            const hit = data.find(x => x.date === d && x.sheep === name);
-            return hit ? Number(hit.weight) : null;
-          })
-        );
-
-        const avgs = SHEEP.map(name => {
-          const arr = data.filter(x => x.sheep === name).map(x => Number(x.weight));
-          return arr.length ? arr.reduce((s,n)=>s+n,0) / arr.length : 0;
-        });
-
-        const maxIdx = avgs.indexOf(Math.max(...avgs));
-        let text = `📈 ${SHEEP[maxIdx]} rata‑rata paling berat (${avgs[maxIdx].toFixed(1)} kg)`;
-        if (data.some(d => d.feed === 'pakan fermentasi')) {
-          text += ' — pakan fermentasi sudah digunakan, pantau efeknya!';
+        if (item.ammonia) {
+          ammoniaSum += item.ammonia;
         }
+      });
 
-        setLabels(dates);
-        setSeries(allSeries);
-        setAvg(avgs);
-        setInsight(text);
-      };
+      setData(tempData);
+      setWeightDist(dist);
+      setAvgAmmonia(tempData.length > 0 ? ammoniaSum / tempData.length : 0);
+      setLoading(false);
+    });
 
-      load();
-    }, [])
-  );
+    return () => unsubscribe();
+  }, []);
 
-  const hasData = series.some(s => s.some(v => v !== null));
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text>Memuat data...</Text>
+      </View>
+    );
+  }
+
+  const insightText = `💡 Rata-rata amonia: ${avgAmmonia.toFixed(
+    2
+  )} ppm — Pastikan ventilasi kandang optimal.`;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F3EDC8' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F3EDC8" }}>
       <ScrollView contentContainerStyle={styles.wrapper}>
-        {/* --- Line Chart Card --- */}
-        <Text style={styles.sectionTitle}>📈 Tren Pertumbuhan Berat</Text>
+        <Text style={styles.sectionTitle}>📊 Dashboard Monitoring</Text>
+
+        {/* Rata-rata amonia */}
         <View style={styles.card}>
-          {hasData ? (
-            <LineChart
-              data={{
-                labels,
-                datasets: series.map((arr,i)=>({ data: arr, color:()=>COLORS[i], strokeWidth:2 })),
-                legend: SHEEP,
-              }}
-              width={screenW - 40}
-              height={240}
-              bezier
-              chartConfig={chartCfg}
-              style={styles.chart}
-            />
-          ) : (
-            <Text style={styles.empty}>Belum ada data valid untuk ditampilkan.</Text>
-          )}
+          <Text style={styles.cardTitle}>Rata-rata Amonia</Text>
+          <Text style={styles.cardValue}>{avgAmmonia.toFixed(2)} ppm</Text>
         </View>
 
-        {/* --- Bar Chart Card --- */}
-        <Text style={styles.sectionTitle}>📊 Rata‑rata Berat</Text>
+        {/* Grafik Distribusi Berat */}
+        <Text style={styles.sectionTitle}>Distribusi Berat Domba</Text>
         <View style={styles.card}>
           <BarChart
-            data={{ labels: SHEEP, datasets: [{ data: avg }] }}
-            width={screenW - 40}
-            height={240}
+            data={{
+              labels: Object.keys(weightDist),
+              datasets: [{ data: Object.values(weightDist) }],
+            }}
+            width={screenWidth - 40}
+            height={220}
             fromZero
-            chartConfig={chartCfg}
+            chartConfig={{
+              backgroundColor: "#fff",
+              backgroundGradientFrom: "#fff",
+              backgroundGradientTo: "#fff",
+              decimalPlaces: 0,
+              color: (o = 1) => `rgba(0,0,0,${o})`,
+              labelColor: (o = 1) => `rgba(0,0,0,${o})`,
+            }}
             style={styles.chart}
           />
         </View>
 
-        {/* --- Insight Banner --- */}
+        {/* Banner Insight */}
         <View style={styles.banner}>
-          <Text style={styles.bannerText}>💡 {insight}</Text>
+          <Text style={styles.bannerText}>{insightText}</Text>
         </View>
+
+        {/* Data Terbaru */}
+        <Text style={styles.sectionTitle}>Data Terbaru</Text>
+        {data.slice(0, 5).map((item, index) => (
+          <View key={index} style={styles.dataCard}>
+            <Text style={styles.dataText}>ID Domba: {item.id_domba}</Text>
+            <Text style={styles.dataText}>Berat: {item.weight} kg</Text>
+            <Text style={styles.dataText}>Amonia: {item.ammonia} ppm</Text>
+            <Text style={styles.dataText}>
+              Waktu:{" "}
+              {item.timestamp
+                ? new Date(item.timestamp.seconds * 1000).toLocaleString()
+                : "-"}
+            </Text>
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-/* --- Chart theme --- */
-const chartCfg = {
-  backgroundColor: '#fff',
-  backgroundGradientFrom: '#fff',
-  backgroundGradientTo:   '#fff',
-  decimalPlaces: 1,
-  color:      (o=1)=>`rgba(0,0,0,${o})`,
-  labelColor: (o=1)=>`rgba(0,0,0,${o})`,
-  propsForDots: { r: '3' },
-};
-
-/* --- Styles --- */
 const styles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 20,
-    paddingVertical:   16,
+    paddingVertical: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    marginTop: 12,
+    fontWeight: "700",
+    marginTop: 8,
     marginBottom: 8,
-    color: '#1E293B',          // deep gray‑blue
+    color: "#1E293B",
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 12,
-    shadowColor:   '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
     elevation: 4,
     marginBottom: 20,
   },
+  cardTitle: { fontSize: 16, fontWeight: "600", color: "#374151" },
+  cardValue: { fontSize: 22, fontWeight: "700", color: "#4CAF50", marginTop: 4 },
   chart: { borderRadius: 12 },
-  empty:  { textAlign:'center', fontStyle:'italic', color:'#6B7280', paddingVertical: 20 },
   banner: {
-    backgroundColor: '#E6F4D9',
+    backgroundColor: "#E6F4D9",
     borderLeftWidth: 6,
-    borderLeftColor: '#44651E',
+    borderLeftColor: "#44651E",
     padding: 12,
     borderRadius: 10,
     marginBottom: 20,
   },
-  bannerText: { color:'#374151', fontSize: 14 },
+  bannerText: { color: "#374151", fontSize: 14 },
+  dataCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  dataText: { fontSize: 14, color: "#374151" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

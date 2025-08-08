@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Dashboard from '../screens/Dashboard';
+import Input from '../screens/Input'; // pastikan file ini ada
 import History from '../screens/History';
 import Monitor from '../screens/Monitor';
 
@@ -36,6 +37,18 @@ export default function BottomTabs() {
           ),
         }}
       />
+
+      <Tab.Screen
+        name="Input"
+        component={Input}
+        options={{
+          tabBarLabel: 'Input',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="plus-box" color={color} size={size} />
+          ),
+        }}
+      />
+
       <Tab.Screen
         name="Monitor"
         component={Monitor}
@@ -46,6 +59,7 @@ export default function BottomTabs() {
           ),
         }}
       />
+
       <Tab.Screen
         name="History"
         component={History}
