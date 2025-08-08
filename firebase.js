@@ -5,6 +5,7 @@ import { getFirestore } from "firebase/firestore";
 const firebaseConfig = {
   apiKey: "AIzaSyB-Fbdguxr1z7nxoYmYtE6mfFhOgEuRIvI",
   authDomain: "kkn-domba-app.firebaseapp.com",
+  databaseURL: "https://kkn-domba-app-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "kkn-domba-app",
   storageBucket: "kkn-domba-app.firebasestorage.app",
   messagingSenderId: "392033724710",
