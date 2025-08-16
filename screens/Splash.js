@@ -19,7 +19,7 @@ export default function SplashScreen() {
     style={styles.logo}
     resizeMode="contain"
   />
-  <Text style={styles.title}>Pencatatan Ternak</Text>
+  <Text style={styles.title}>Wedhus Guard</Text>
 </View>
   );
 }
